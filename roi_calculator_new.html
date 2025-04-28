@@ -1,0 +1,186 @@
+
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <title>Profit Pulse</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0ff">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Profit Pulse">
+  <link rel="apple-touch-icon" href="icon.png">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      max-width: 900px;
+      margin: auto;
+      background-color: #000000;
+      color: #00ffff;
+      transition: background-color 0.3s, color 0.3s;
+    }
+    h1, h2 {
+      text-align: center;
+    }
+    label {
+      display: block;
+      margin-top: 10px;
+    }
+    input[type="number"] {
+      width: 100%;
+      padding: 8px;
+      margin-top: 5px;
+      box-sizing: border-box;
+      background: #111;
+      color: #0ff;
+      border: 1px solid #0ff;
+    }
+    button {
+      margin-top: 15px;
+      width: 100%;
+      padding: 10px;
+      font-size: 16px;
+      cursor: pointer;
+      background-color: #0ff;
+      color: #000;
+      border: none;
+      font-weight: bold;
+    }
+    #result, #simpleResult {
+      margin-top: 20px;
+      font-size: 18px;
+      font-weight: bold;
+      text-align: center;
+    }
+    canvas {
+      margin-top: 30px;
+      width: 100%;
+    }
+    .calculator-section {
+      margin-top: 40px;
+      padding: 20px;
+      border: 1px solid #0ff;
+      border-radius: 10px;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Profit Pulse</h1>
+
+  <div class="calculator-section">
+    <h2>複利 ROI 計算器</h2>
+    <label for="principal">投資本金 ($):</label>
+    <input type="number" id="principal" placeholder="例：1000" oninput="calculateCompoundROI()">
+
+    <label for="roi">每期 ROI (%):</label>
+    <input type="number" id="roi" placeholder="例：5" oninput="calculateCompoundROI()">
+
+    <label for="terms">投資期數:</label>
+    <input type="number" id="terms" placeholder="例：12" oninput="calculateCompoundROI()">
+
+    <div id="result"></div>
+
+    <canvas id="growthChart"></canvas>
+  </div>
+
+  <div class="calculator-section">
+    <h2>簡單 ROI 計算器</h2>
+    <label for="simpleCost">投資成本 ($):</label>
+    <input type="number" id="simpleCost" placeholder="例：1000">
+
+    <label for="simpleReturn">回收金額 ($):</label>
+    <input type="number" id="simpleReturn" placeholder="例：1200">
+
+    <button onclick="calculateSimpleROI()">計算 ROI</button>
+
+    <div id="simpleResult"></div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('service-worker.js')
+      .then(function(registration) {
+        console.log('Service Worker registered with scope:', registration.scope);
+      }).catch(function(error) {
+        console.log('Service Worker registration failed:', error);
+      });
+    }
+
+    let chart;
+    function formatNumber(num) {
+      return num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function calculateCompoundROI() {
+      const principal = parseFloat(document.getElementById('principal').value);
+      const roi = parseFloat(document.getElementById('roi').value);
+      const terms = parseFloat(document.getElementById('terms').value);
+
+      if (isNaN(principal) || isNaN(roi) || isNaN(terms)) {
+        document.getElementById('result').innerText = "請輸入有效數字！";
+        return;
+      }
+
+      const finalAmount = principal * Math.pow((1 + roi / 100), terms);
+      const totalProfit = finalAmount - principal;
+      const totalROI = (totalProfit / principal) * 100;
+
+      document.getElementById('result').innerHTML = `
+        最終金額: <b>$${formatNumber(finalAmount)}</b><br>
+        總收益: <b>$${formatNumber(totalProfit)}</b><br>
+        總回報率: <b>${formatNumber(totalROI)}%</b>
+      `;
+
+      const labels = [];
+      const data = [];
+      for (let i = 0; i <= terms; i++) {
+        labels.push(`第 ${i} 期`);
+        data.push(principal * Math.pow((1 + roi / 100), i));
+      }
+
+      if (chart) {
+        chart.destroy();
+      }
+      const ctx = document.getElementById('growthChart').getContext('2d');
+      chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: '資金成長曲線',
+            data: data,
+            borderWidth: 2,
+            fill: false,
+            pointRadius: 3,
+          }]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            y: {
+              beginAtZero: true
+            }
+          }
+        }
+      });
+    }
+
+    function calculateSimpleROI() {
+      const cost = parseFloat(document.getElementById('simpleCost').value);
+      const returned = parseFloat(document.getElementById('simpleReturn').value);
+
+      if (isNaN(cost) || isNaN(returned) || cost === 0) {
+        document.getElementById('simpleResult').innerText = "請輸入有效數字！";
+        return;
+      }
+
+      const simpleROI = ((returned - cost) / cost) * 100;
+      document.getElementById('simpleResult').innerHTML = `ROI: <b>${formatNumber(simpleROI)}%</b>`;
+    }
+  </script>
+
+</body>
+</html>
